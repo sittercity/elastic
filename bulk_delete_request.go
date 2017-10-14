@@ -12,17 +12,17 @@ import (
 
 // -- Bulk delete request --
 
-// Bulk request to remove a document from Elasticsearch.
+// BulkDeleteRequest is a request to remove a document from Elasticsearch.
 //
-// See https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/docs-bulk.html
 // for details.
 type BulkDeleteRequest struct {
 	BulkableRequest
 	index       string
 	typ         string
 	id          string
+	parent      string
 	routing     string
-	refresh     *bool
 	version     int64  // default is MATCH_ANY
 	versionType string // default is "internal"
 
@@ -57,18 +57,17 @@ func (r *BulkDeleteRequest) Id(id string) *BulkDeleteRequest {
 	return r
 }
 
-// Routing specifies a routing value for the request.
-func (r *BulkDeleteRequest) Routing(routing string) *BulkDeleteRequest {
-	r.routing = routing
+// Parent specifies the parent of the request, which is used in parent/child
+// mappings.
+func (r *BulkDeleteRequest) Parent(parent string) *BulkDeleteRequest {
+	r.parent = parent
 	r.source = nil
 	return r
 }
 
-// Refresh indicates whether to update the shards immediately after
-// the delete has been processed. Deleted documents will disappear
-// in search immediately at the cost of slower bulk performance.
-func (r *BulkDeleteRequest) Refresh(refresh bool) *BulkDeleteRequest {
-	r.refresh = &refresh
+// Routing specifies a routing value for the request.
+func (r *BulkDeleteRequest) Routing(routing string) *BulkDeleteRequest {
+	r.routing = routing
 	r.source = nil
 	return r
 }
@@ -101,7 +100,7 @@ func (r *BulkDeleteRequest) String() string {
 
 // Source returns the on-wire representation of the delete request,
 // split into an action-and-meta-data line and an (optional) source line.
-// See https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/docs-bulk.html
 // for details.
 func (r *BulkDeleteRequest) Source() ([]string, error) {
 	if r.source != nil {
@@ -120,6 +119,9 @@ func (r *BulkDeleteRequest) Source() ([]string, error) {
 	if r.id != "" {
 		deleteCommand["_id"] = r.id
 	}
+	if r.parent != "" {
+		deleteCommand["_parent"] = r.parent
+	}
 	if r.routing != "" {
 		deleteCommand["_routing"] = r.routing
 	}
@@ -128,9 +130,6 @@ func (r *BulkDeleteRequest) Source() ([]string, error) {
 	}
 	if r.versionType != "" {
 		deleteCommand["_version_type"] = r.versionType
-	}
-	if r.refresh != nil {
-		deleteCommand["refresh"] = *r.refresh
 	}
 	source["delete"] = deleteCommand
 

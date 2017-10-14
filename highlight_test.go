@@ -1,12 +1,12 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
 package elastic
 
 import (
+	"context"
 	"encoding/json"
-	_ "net/http"
 	"testing"
 )
 
@@ -117,6 +117,23 @@ func TestHighlighterWithExplicitFieldOrder(t *testing.T) {
 	}
 }
 
+func TestHighlightWithBoundaryChars(t *testing.T) {
+	builder := NewHighlight().BoundaryChars(" \t\r")
+	src, err := builder.Source()
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(src)
+	if err != nil {
+		t.Fatalf("marshaling to JSON failed: %v", err)
+	}
+	got := string(data)
+	expected := `{"boundary_chars":" \t\r"}`
+	if got != expected {
+		t.Errorf("expected\n%s\n,got:\n%s", expected, got)
+	}
+}
+
 func TestHighlightWithTermQuery(t *testing.T) {
 	client := setupTestClientAndCreateIndex(t)
 
@@ -125,22 +142,22 @@ func TestHighlightWithTermQuery(t *testing.T) {
 	tweet3 := tweet{User: "sandrae", Message: "Cycling is fun to do."}
 
 	// Add all documents
-	_, err := client.Index().Index(testIndexName).Type("tweet").Id("1").BodyJson(&tweet1).Do()
+	_, err := client.Index().Index(testIndexName).Type("tweet").Id("1").BodyJson(&tweet1).Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = client.Index().Index(testIndexName).Type("tweet").Id("2").BodyJson(&tweet2).Do()
+	_, err = client.Index().Index(testIndexName).Type("tweet").Id("2").BodyJson(&tweet2).Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = client.Index().Index(testIndexName).Type("tweet").Id("3").BodyJson(&tweet3).Do()
+	_, err = client.Index().Index(testIndexName).Type("tweet").Id("3").BodyJson(&tweet3).Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = client.Flush().Index(testIndexName).Do()
+	_, err = client.Flush().Index(testIndexName).Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +173,7 @@ func TestHighlightWithTermQuery(t *testing.T) {
 		Index(testIndexName).
 		Highlight(hl).
 		Query(query).
-		Do()
+		Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}

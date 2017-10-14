@@ -1,22 +1,22 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
 package elastic
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
 
-	"gopkg.in/olivere/elastic.v3/uritemplates"
+	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
 
 // IndicesPutMappingService allows to register specific mapping definition
 // for a specific type.
 //
-// See https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-put-mapping.html
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/indices-put-mapping.html
 // for details.
 type IndicesPutMappingService struct {
 	client            *Client
@@ -27,7 +27,7 @@ type IndicesPutMappingService struct {
 	ignoreUnavailable *bool
 	allowNoIndices    *bool
 	expandWildcards   string
-	ignoreConflicts   *bool
+	updateAllTypes    *bool
 	timeout           string
 	bodyJson          map[string]interface{}
 	bodyString        string
@@ -94,10 +94,10 @@ func (s *IndicesPutMappingService) ExpandWildcards(expandWildcards string) *Indi
 	return s
 }
 
-// IgnoreConflicts specifies whether to ignore conflicts while updating
-// the mapping (default: false).
-func (s *IndicesPutMappingService) IgnoreConflicts(ignoreConflicts bool) *IndicesPutMappingService {
-	s.ignoreConflicts = &ignoreConflicts
+// UpdateAllTypes, if true, indicates that all fields that span multiple indices
+// should be updated (default: false).
+func (s *IndicesPutMappingService) UpdateAllTypes(updateAllTypes bool) *IndicesPutMappingService {
+	s.updateAllTypes = &updateAllTypes
 	return s
 }
 
@@ -153,8 +153,8 @@ func (s *IndicesPutMappingService) buildURL() (string, url.Values, error) {
 	if s.expandWildcards != "" {
 		params.Set("expand_wildcards", s.expandWildcards)
 	}
-	if s.ignoreConflicts != nil {
-		params.Set("ignore_conflicts", fmt.Sprintf("%v", *s.ignoreConflicts))
+	if s.updateAllTypes != nil {
+		params.Set("update_all_types", fmt.Sprintf("%v", *s.updateAllTypes))
 	}
 	if s.timeout != "" {
 		params.Set("timeout", s.timeout)
@@ -181,7 +181,7 @@ func (s *IndicesPutMappingService) Validate() error {
 }
 
 // Do executes the operation.
-func (s *IndicesPutMappingService) Do() (*PutMappingResponse, error) {
+func (s *IndicesPutMappingService) Do(ctx context.Context) (*PutMappingResponse, error) {
 	// Check pre-conditions
 	if err := s.Validate(); err != nil {
 		return nil, err
@@ -202,14 +202,14 @@ func (s *IndicesPutMappingService) Do() (*PutMappingResponse, error) {
 	}
 
 	// Get HTTP response
-	res, err := s.client.PerformRequest("PUT", path, params, body)
+	res, err := s.client.PerformRequest(ctx, "PUT", path, params, body)
 	if err != nil {
 		return nil, err
 	}
 
 	// Return operation response
 	ret := new(PutMappingResponse)
-	if err := json.Unmarshal(res.Body, ret); err != nil {
+	if err := s.client.decoder.Decode(res.Body, ret); err != nil {
 		return nil, err
 	}
 	return ret, nil

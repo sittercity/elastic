@@ -1,34 +1,34 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
 package elastic
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
 
-	"gopkg.in/olivere/elastic.v3/uritemplates"
+	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
 
 // ClusterHealthService allows to get a very simple status on the health of the cluster.
 //
-// See http://www.elastic.co/guide/en/elasticsearch/reference/current/cluster-health.html
+// See http://www.elastic.co/guide/en/elasticsearch/reference/5.2/cluster-health.html
 // for details.
 type ClusterHealthService struct {
-	client                  *Client
-	pretty                  bool
-	indices                 []string
-	level                   string
-	local                   *bool
-	masterTimeout           string
-	timeout                 string
-	waitForActiveShards     *int
-	waitForNodes            string
-	waitForRelocatingShards *int
-	waitForStatus           string
+	client                    *Client
+	pretty                    bool
+	indices                   []string
+	level                     string
+	local                     *bool
+	masterTimeout             string
+	timeout                   string
+	waitForActiveShards       *int
+	waitForNodes              string
+	waitForNoRelocatingShards *bool
+	waitForStatus             string
 }
 
 // NewClusterHealthService creates a new ClusterHealthService.
@@ -83,9 +83,9 @@ func (s *ClusterHealthService) WaitForNodes(waitForNodes string) *ClusterHealthS
 	return s
 }
 
-// WaitForRelocatingShards can be used to wait until the specified number of relocating shards is finished.
-func (s *ClusterHealthService) WaitForRelocatingShards(waitForRelocatingShards int) *ClusterHealthService {
-	s.waitForRelocatingShards = &waitForRelocatingShards
+// WaitForNoRelocatingShards can be used to wait until all shard relocations are finished.
+func (s *ClusterHealthService) WaitForNoRelocatingShards(waitForNoRelocatingShards bool) *ClusterHealthService {
+	s.waitForNoRelocatingShards = &waitForNoRelocatingShards
 	return s
 }
 
@@ -151,8 +151,8 @@ func (s *ClusterHealthService) buildURL() (string, url.Values, error) {
 	if s.waitForNodes != "" {
 		params.Set("wait_for_nodes", s.waitForNodes)
 	}
-	if s.waitForRelocatingShards != nil {
-		params.Set("wait_for_relocating_shards", fmt.Sprintf("%v", s.waitForRelocatingShards))
+	if s.waitForNoRelocatingShards != nil {
+		params.Set("wait_for_no_relocating_shards", fmt.Sprintf("%v", *s.waitForNoRelocatingShards))
 	}
 	if s.waitForStatus != "" {
 		params.Set("wait_for_status", s.waitForStatus)
@@ -166,7 +166,7 @@ func (s *ClusterHealthService) Validate() error {
 }
 
 // Do executes the operation.
-func (s *ClusterHealthService) Do() (*ClusterHealthResponse, error) {
+func (s *ClusterHealthService) Do(ctx context.Context) (*ClusterHealthResponse, error) {
 	// Check pre-conditions
 	if err := s.Validate(); err != nil {
 		return nil, err
@@ -179,17 +179,17 @@ func (s *ClusterHealthService) Do() (*ClusterHealthResponse, error) {
 	}
 
 	// Get HTTP response
-	res, err := s.client.PerformRequest("GET", path, params, nil)
+	res, err := s.client.PerformRequest(ctx, "GET", path, params, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	// Return operation response
-	resp := new(ClusterHealthResponse)
-	if err := json.Unmarshal(res.Body, resp); err != nil {
+	ret := new(ClusterHealthResponse)
+	if err := s.client.decoder.Decode(res.Body, ret); err != nil {
 		return nil, err
 	}
-	return resp, nil
+	return ret, nil
 }
 
 // ClusterHealthResponse is the response of ClusterHealthService.Do.

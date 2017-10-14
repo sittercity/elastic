@@ -1,4 +1,4 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
@@ -12,7 +12,7 @@ import (
 // MultiMatchQuery builds on the MatchQuery to allow multi-field queries.
 //
 // For more details, see
-// https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-multi-match-query.html
+// https://www.elastic.co/guide/en/elasticsearch/reference/5.2/query-dsl-multi-match-query.html
 type MultiMatchQuery struct {
 	text               interface{}
 	fields             []string
@@ -207,7 +207,7 @@ func (q *MultiMatchQuery) Source() (interface{}, error) {
 	multiMatch["query"] = q.text
 
 	if len(q.fields) > 0 {
-		fields := make([]string, 0)
+		var fields []string
 		for _, field := range q.fields {
 			if boost, found := q.fieldBoosts[field]; found {
 				if boost != nil {

@@ -1,24 +1,26 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
 package elastic
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"net/url"
 
-	"gopkg.in/olivere/elastic.v3/uritemplates"
+	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
 
 // IndicesPutTemplateService creates or updates index mappings.
-// See http://www.elasticsearch.org/guide/en/elasticsearch/reference/1.4/indices-templates.html.
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/indices-templates.html.
 type IndicesPutTemplateService struct {
 	client        *Client
 	pretty        bool
 	name          string
+	cause         string
 	order         interface{}
+	version       *int
 	create        *bool
 	timeout       string
 	masterTimeout string
@@ -37,6 +39,13 @@ func NewIndicesPutTemplateService(client *Client) *IndicesPutTemplateService {
 // Name is the name of the index template.
 func (s *IndicesPutTemplateService) Name(name string) *IndicesPutTemplateService {
 	s.name = name
+	return s
+}
+
+// Cause describes the cause for this index template creation. This is currently
+// undocumented, but part of the Java source.
+func (s *IndicesPutTemplateService) Cause(cause string) *IndicesPutTemplateService {
+	s.cause = cause
 	return s
 }
 
@@ -62,6 +71,12 @@ func (s *IndicesPutTemplateService) FlatSettings(flatSettings bool) *IndicesPutT
 // (higher numbers are merged later, overriding the lower numbers).
 func (s *IndicesPutTemplateService) Order(order interface{}) *IndicesPutTemplateService {
 	s.order = order
+	return s
+}
+
+// Version sets the version number for this template.
+func (s *IndicesPutTemplateService) Version(version int) *IndicesPutTemplateService {
+	s.version = &version
 	return s
 }
 
@@ -108,8 +123,14 @@ func (s *IndicesPutTemplateService) buildURL() (string, url.Values, error) {
 	if s.order != nil {
 		params.Set("order", fmt.Sprintf("%v", s.order))
 	}
+	if s.version != nil {
+		params.Set("version", fmt.Sprintf("%v", *s.version))
+	}
 	if s.create != nil {
 		params.Set("create", fmt.Sprintf("%v", *s.create))
+	}
+	if s.cause != "" {
+		params.Set("cause", s.cause)
 	}
 	if s.timeout != "" {
 		params.Set("timeout", s.timeout)
@@ -139,7 +160,7 @@ func (s *IndicesPutTemplateService) Validate() error {
 }
 
 // Do executes the operation.
-func (s *IndicesPutTemplateService) Do() (*IndicesPutTemplateResponse, error) {
+func (s *IndicesPutTemplateService) Do(ctx context.Context) (*IndicesPutTemplateResponse, error) {
 	// Check pre-conditions
 	if err := s.Validate(); err != nil {
 		return nil, err
@@ -160,14 +181,14 @@ func (s *IndicesPutTemplateService) Do() (*IndicesPutTemplateResponse, error) {
 	}
 
 	// Get HTTP response
-	res, err := s.client.PerformRequest("PUT", path, params, body)
+	res, err := s.client.PerformRequest(ctx, "PUT", path, params, body)
 	if err != nil {
 		return nil, err
 	}
 
 	// Return operation response
 	ret := new(IndicesPutTemplateResponse)
-	if err := json.Unmarshal(res.Body, ret); err != nil {
+	if err := s.client.decoder.Decode(res.Body, ret); err != nil {
 		return nil, err
 	}
 	return ret, nil

@@ -1,19 +1,19 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
 package elastic
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"net/url"
 
-	"gopkg.in/olivere/elastic.v3/uritemplates"
+	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
 
 // GetTemplateService reads a search template.
-// It is documented at http://www.elasticsearch.org/guide/en/elasticsearch/reference/master/search-template.html.
+// It is documented at https://www.elastic.co/guide/en/elasticsearch/reference/5.2/search-template.html.
 type GetTemplateService struct {
 	client      *Client
 	pretty      bool
@@ -82,7 +82,7 @@ func (s *GetTemplateService) Validate() error {
 }
 
 // Do executes the operation and returns the template.
-func (s *GetTemplateService) Do() (*GetTemplateResponse, error) {
+func (s *GetTemplateService) Do(ctx context.Context) (*GetTemplateResponse, error) {
 	// Check pre-conditions
 	if err := s.Validate(); err != nil {
 		return nil, err
@@ -95,14 +95,14 @@ func (s *GetTemplateService) Do() (*GetTemplateResponse, error) {
 	}
 
 	// Get HTTP response
-	res, err := s.client.PerformRequest("GET", path, params, nil)
+	res, err := s.client.PerformRequest(ctx, "GET", path, params, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	// Return result
 	ret := new(GetTemplateResponse)
-	if err := json.Unmarshal(res.Body, ret); err != nil {
+	if err := s.client.decoder.Decode(res.Body, ret); err != nil {
 		return nil, err
 	}
 	return ret, nil

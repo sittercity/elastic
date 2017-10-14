@@ -1,4 +1,4 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
@@ -10,7 +10,7 @@ import (
 )
 
 func TestRangeQuery(t *testing.T) {
-	q := NewRangeQuery("postDate").From("2010-03-01").To("2010-04-01")
+	q := NewRangeQuery("postDate").From("2010-03-01").To("2010-04-01").Boost(3)
 	q = q.QueryName("my_query")
 	src, err := q.Source()
 	if err != nil {
@@ -21,7 +21,7 @@ func TestRangeQuery(t *testing.T) {
 		t.Fatalf("marshaling to JSON failed: %v", err)
 	}
 	got := string(data)
-	expected := `{"range":{"_name":"my_query","postDate":{"from":"2010-03-01","include_lower":true,"include_upper":true,"to":"2010-04-01"}}}`
+	expected := `{"range":{"_name":"my_query","postDate":{"boost":3,"from":"2010-03-01","include_lower":true,"include_upper":true,"to":"2010-04-01"}}}`
 	if got != expected {
 		t.Errorf("expected\n%s\n,got:\n%s", expected, got)
 	}

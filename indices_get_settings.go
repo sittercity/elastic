@@ -1,22 +1,22 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
 package elastic
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
 
-	"gopkg.in/olivere/elastic.v3/uritemplates"
+	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
 
 // IndicesGetSettingsService allows to retrieve settings of one
 // or more indices.
 //
-// See https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-get-settings.html
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/indices-get-settings.html
 // for more details.
 type IndicesGetSettingsService struct {
 	client            *Client
@@ -151,7 +151,7 @@ func (s *IndicesGetSettingsService) Validate() error {
 }
 
 // Do executes the operation.
-func (s *IndicesGetSettingsService) Do() (map[string]*IndicesGetSettingsResponse, error) {
+func (s *IndicesGetSettingsService) Do(ctx context.Context) (map[string]*IndicesGetSettingsResponse, error) {
 	// Check pre-conditions
 	if err := s.Validate(); err != nil {
 		return nil, err
@@ -164,14 +164,14 @@ func (s *IndicesGetSettingsService) Do() (map[string]*IndicesGetSettingsResponse
 	}
 
 	// Get HTTP response
-	res, err := s.client.PerformRequest("GET", path, params, nil)
+	res, err := s.client.PerformRequest(ctx, "GET", path, params, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	// Return operation response
 	var ret map[string]*IndicesGetSettingsResponse
-	if err := json.Unmarshal(res.Body, &ret); err != nil {
+	if err := s.client.decoder.Decode(res.Body, &ret); err != nil {
 		return nil, err
 	}
 	return ret, nil

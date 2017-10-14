@@ -1,10 +1,11 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
 package elastic
 
 import (
+	"context"
 	"encoding/json"
 	"net/url"
 	"testing"
@@ -204,7 +205,7 @@ func TestUpdateViaDocAndUpsert(t *testing.T) {
 		Doc(map[string]interface{}{"name": "new_name"}).
 		DocAsUpsert(true).
 		Timeout("1s").
-		Refresh(true)
+		Refresh("true")
 	path, params, err := update.url()
 	if err != nil {
 		t.Fatalf("expected to return URL, got: %v", err)
@@ -232,81 +233,69 @@ func TestUpdateViaDocAndUpsert(t *testing.T) {
 	}
 }
 
-func TestUpdateViaScriptIntegration(t *testing.T) {
-	client := setupTestClientAndCreateIndex(t)
+func TestUpdateViaDocAndUpsertAndFetchSource(t *testing.T) {
+	client := setupTestClient(t)
+	update := client.Update().
+		Index("test").Type("type1").Id("1").
+		Doc(map[string]interface{}{"name": "new_name"}).
+		DocAsUpsert(true).
+		Timeout("1s").
+		Refresh("true").
+		FetchSource(true)
+	path, params, err := update.url()
+	if err != nil {
+		t.Fatalf("expected to return URL, got: %v", err)
+	}
+	expectedPath := `/test/type1/1/_update`
+	if expectedPath != path {
+		t.Errorf("expected URL path\n%s\ngot:\n%s", expectedPath, path)
+	}
+	expectedParams := url.Values{
+		"refresh": []string{"true"},
+		"timeout": []string{"1s"},
+	}
+	if expectedParams.Encode() != params.Encode() {
+		t.Errorf("expected URL parameters\n%s\ngot:\n%s", expectedParams.Encode(), params.Encode())
+	}
+	body, err := update.body()
+	if err != nil {
+		t.Fatalf("expected to return body, got: %v", err)
+	}
+	data, err := json.Marshal(body)
+	if err != nil {
+		t.Fatalf("expected to marshal body as JSON, got: %v", err)
+	}
+	got := string(data)
+	expected := `{"_source":true,"doc":{"name":"new_name"},"doc_as_upsert":true}`
+	if got != expected {
+		t.Errorf("expected\n%s\ngot:\n%s", expected, got)
+	}
+}
 
-	esversion, err := client.ElasticsearchVersion(DefaultURL)
+func TestUpdateAndFetchSource(t *testing.T) {
+	client := setupTestClientAndCreateIndexAndAddDocs(t) // , SetTraceLog(log.New(os.Stdout, "", 0)))
+	res, err := client.Update().
+		Index(testIndexName).Type("tweet").Id("1").
+		Doc(map[string]interface{}{"user": "sandrae"}).
+		DetectNoop(true).
+		FetchSource(true).
+		Do(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if esversion >= "1.4.3" || (esversion < "1.4.0" && esversion >= "1.3.8") {
-		t.Skip("groovy scripting has been disabled as for [1.3.8,1.4.0) and 1.4.3+")
-		return
+	if res == nil {
+		t.Fatal("expected response != nil")
 	}
-
-	tweet1 := tweet{User: "olivere", Retweets: 10, Message: "Welcome to Golang and Elasticsearch."}
-
-	// Add a document
-	indexResult, err := client.Index().
-		Index(testIndexName).
-		Type("tweet").
-		Id("1").
-		BodyJson(&tweet1).
-		Do()
+	if res.GetResult == nil {
+		t.Fatal("expected GetResult != nil")
+	}
+	data, err := json.Marshal(res.GetResult.Source)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("expected to marshal body as JSON, got: %v", err)
 	}
-	if indexResult == nil {
-		t.Errorf("expected result to be != nil; got: %v", indexResult)
-	}
-
-	// Update number of retweets
-	increment := 1
-	script := NewScript("ctx._source.retweets += num").
-		Params(map[string]interface{}{"num": increment}).
-		Lang("groovy") // Use "groovy" as default language as 1.3 uses MVEL by default
-	update, err := client.Update().Index(testIndexName).Type("tweet").Id("1").
-		Script(script).
-		Do()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if update == nil {
-		t.Errorf("expected update to be != nil; got %v", update)
-	}
-	if update.Version != indexResult.Version+1 {
-		t.Errorf("expected version to be %d; got %d", indexResult.Version+1, update.Version)
-	}
-
-	// Get document
-	getResult, err := client.Get().
-		Index(testIndexName).
-		Type("tweet").
-		Id("1").
-		Do()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if getResult.Index != testIndexName {
-		t.Errorf("expected GetResult.Index %q; got %q", testIndexName, getResult.Index)
-	}
-	if getResult.Type != "tweet" {
-		t.Errorf("expected GetResult.Type %q; got %q", "tweet", getResult.Type)
-	}
-	if getResult.Id != "1" {
-		t.Errorf("expected GetResult.Id %q; got %q", "1", getResult.Id)
-	}
-	if getResult.Source == nil {
-		t.Errorf("expected GetResult.Source to be != nil; got nil")
-	}
-
-	// Decode the Source field
-	var tweetGot tweet
-	err = json.Unmarshal(*getResult.Source, &tweetGot)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if tweetGot.Retweets != tweet1.Retweets+increment {
-		t.Errorf("expected Tweet.Retweets to be %d; got %d", tweet1.Retweets+increment, tweetGot.Retweets)
+	got := string(data)
+	expected := `{"user":"sandrae","message":"Welcome to Golang and Elasticsearch.","retweets":0,"created":"0001-01-01T00:00:00Z"}`
+	if got != expected {
+		t.Errorf("expected\n%s\ngot:\n%s", expected, got)
 	}
 }

@@ -1,4 +1,4 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
@@ -7,7 +7,7 @@ package elastic
 // RangeQuery matches documents with fields that have terms within a certain range.
 //
 // For details, see
-// https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-range-query.html
+// https://www.elastic.co/guide/en/elasticsearch/reference/5.2/query-dsl-range-query.html
 type RangeQuery struct {
 	name         string
 	from         interface{}
@@ -130,12 +130,11 @@ func (q *RangeQuery) Source() (interface{}, error) {
 	if q.format != "" {
 		params["format"] = q.format
 	}
+	if q.boost != nil {
+		params["boost"] = *q.boost
+	}
 	params["include_lower"] = q.includeLower
 	params["include_upper"] = q.includeUpper
-
-	if q.boost != nil {
-		rangeQ["boost"] = *q.boost
-	}
 
 	if q.queryName != "" {
 		rangeQ["_name"] = q.queryName

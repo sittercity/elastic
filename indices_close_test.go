@@ -1,10 +1,13 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
 package elastic
 
-import "testing"
+import (
+	"context"
+	"testing"
+)
 
 // TODO(oe): Find out why this test fails on Travis CI.
 /*
@@ -12,7 +15,7 @@ func TestIndicesOpenAndClose(t *testing.T) {
 	client := setupTestClient(t)
 
 	// Create index
-	createIndex, err := client.CreateIndex(testIndexName).Do()
+	createIndex, err := client.CreateIndex(testIndexName).Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -21,7 +24,7 @@ func TestIndicesOpenAndClose(t *testing.T) {
 	}
 	defer func() {
 		// Delete index
-		deleteIndex, err := client.DeleteIndex(testIndexName).Do()
+		deleteIndex, err := client.DeleteIndex(testIndexName).Do(context.TODO())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -32,7 +35,7 @@ func TestIndicesOpenAndClose(t *testing.T) {
 
 	waitForYellow := func() {
 		// Wait for status yellow
-		res, err := client.ClusterHealth().WaitForStatus("yellow").Timeout("15s").Do()
+		res, err := client.ClusterHealth().WaitForStatus("yellow").Timeout("15s").Do(context.TODO())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -45,7 +48,7 @@ func TestIndicesOpenAndClose(t *testing.T) {
 	waitForYellow()
 
 	// Close index
-	cresp, err := client.CloseIndex(testIndexName).Do()
+	cresp, err := client.CloseIndex(testIndexName).Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +60,7 @@ func TestIndicesOpenAndClose(t *testing.T) {
 	waitForYellow()
 
 	// Open index again
-	oresp, err := client.OpenIndex(testIndexName).Do()
+	oresp, err := client.OpenIndex(testIndexName).Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +74,7 @@ func TestIndicesCloseValidate(t *testing.T) {
 	client := setupTestClient(t)
 
 	// No index name -> fail with error
-	res, err := NewIndicesCloseService(client).Do()
+	res, err := NewIndicesCloseService(client).Do(context.TODO())
 	if err == nil {
 		t.Fatalf("expected IndicesClose to fail without index name")
 	}

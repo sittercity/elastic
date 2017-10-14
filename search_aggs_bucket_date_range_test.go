@@ -1,4 +1,4 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
@@ -14,6 +14,31 @@ func TestDateRangeAggregation(t *testing.T) {
 	agg = agg.AddRange(nil, "2012-12-31")
 	agg = agg.AddRange("2013-01-01", "2013-12-31")
 	agg = agg.AddRange("2014-01-01", nil)
+	src, err := agg.Source()
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(src)
+	if err != nil {
+		t.Fatalf("marshaling to JSON failed: %v", err)
+	}
+	got := string(data)
+	expected := `{"date_range":{"field":"created_at","ranges":[{"to":"2012-12-31"},{"from":"2013-01-01","to":"2013-12-31"},{"from":"2014-01-01"}]}}`
+	if got != expected {
+		t.Errorf("expected\n%s\n,got:\n%s", expected, got)
+	}
+}
+
+func TestDateRangeAggregationWithPointers(t *testing.T) {
+	d1 := "2012-12-31"
+	d2 := "2013-01-01"
+	d3 := "2013-12-31"
+	d4 := "2014-01-01"
+
+	agg := NewDateRangeAggregation().Field("created_at")
+	agg = agg.AddRange(nil, &d1)
+	agg = agg.AddRange(d2, &d3)
+	agg = agg.AddRange(d4, nil)
 	src, err := agg.Source()
 	if err != nil {
 		t.Fatal(err)

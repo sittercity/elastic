@@ -1,16 +1,19 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
 package elastic
 
-import "testing"
+import (
+	"context"
+	"testing"
+)
 
 func TestIndicesLifecycle(t *testing.T) {
 	client := setupTestClient(t)
 
 	// Create index
-	createIndex, err := client.CreateIndex(testIndexName).Do()
+	createIndex, err := client.CreateIndex(testIndexName).Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -19,7 +22,7 @@ func TestIndicesLifecycle(t *testing.T) {
 	}
 
 	// Check if index exists
-	indexExists, err := client.IndexExists(testIndexName).Do()
+	indexExists, err := client.IndexExists(testIndexName).Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,7 +31,7 @@ func TestIndicesLifecycle(t *testing.T) {
 	}
 
 	// Delete index
-	deleteIndex, err := client.DeleteIndex(testIndexName).Do()
+	deleteIndex, err := client.DeleteIndex(testIndexName).Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +40,7 @@ func TestIndicesLifecycle(t *testing.T) {
 	}
 
 	// Check if index exists
-	indexExists, err = client.IndexExists(testIndexName).Do()
+	indexExists, err = client.IndexExists(testIndexName).Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +53,7 @@ func TestIndicesCreateValidate(t *testing.T) {
 	client := setupTestClient(t)
 
 	// No index name -> fail with error
-	res, err := NewIndicesCreateService(client).Body(testMapping).Do()
+	res, err := NewIndicesCreateService(client).Body(testMapping).Do(context.TODO())
 	if err == nil {
 		t.Fatalf("expected IndicesCreate to fail without index name")
 	}

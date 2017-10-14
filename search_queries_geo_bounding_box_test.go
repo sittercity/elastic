@@ -1,4 +1,4 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
@@ -37,7 +37,7 @@ func TestGeoBoundingBoxQuery(t *testing.T) {
 		t.Fatalf("marshaling to JSON failed: %v", err)
 	}
 	got := string(data)
-	expected := `{"geo_bbox":{"pin.location":{"bottom_right":[-71.12,40.01],"top_left":[-74.1,40.73]},"type":"memory"}}`
+	expected := `{"geo_bounding_box":{"pin.location":{"bottom_right":[-71.12,40.01],"top_left":[-74.1,40.73]},"type":"memory"}}`
 	if got != expected {
 		t.Errorf("expected\n%s\n,got:\n%s", expected, got)
 	}
@@ -56,7 +56,7 @@ func TestGeoBoundingBoxQueryWithGeoPoint(t *testing.T) {
 		t.Fatalf("marshaling to JSON failed: %v", err)
 	}
 	got := string(data)
-	expected := `{"geo_bbox":{"pin.location":{"bottom_right":[-71.12,40.01],"top_left":[-74.1,40.73]}}}`
+	expected := `{"geo_bounding_box":{"pin.location":{"bottom_right":[-71.12,40.01],"top_left":[-74.1,40.73]}}}`
 	if got != expected {
 		t.Errorf("expected\n%s\n,got:\n%s", expected, got)
 	}

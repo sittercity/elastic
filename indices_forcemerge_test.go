@@ -1,10 +1,11 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
 package elastic
 
 import (
+	"context"
 	"testing"
 )
 
@@ -44,7 +45,7 @@ func TestIndicesForcemergeBuildURL(t *testing.T) {
 func TestIndicesForcemerge(t *testing.T) {
 	client := setupTestClientAndCreateIndexAndAddDocs(t)
 
-	_, err := client.Forcemerge(testIndexName).MaxNumSegments(1).WaitForMerge(true).Do()
+	_, err := client.Forcemerge(testIndexName).MaxNumSegments(1).Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}

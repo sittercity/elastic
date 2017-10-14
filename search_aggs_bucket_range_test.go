@@ -1,4 +1,4 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
@@ -14,6 +14,28 @@ func TestRangeAggregation(t *testing.T) {
 	agg = agg.AddRange(nil, 50)
 	agg = agg.AddRange(50, 100)
 	agg = agg.AddRange(100, nil)
+	src, err := agg.Source()
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(src)
+	if err != nil {
+		t.Fatalf("marshaling to JSON failed: %v", err)
+	}
+	got := string(data)
+	expected := `{"range":{"field":"price","ranges":[{"to":50},{"from":50,"to":100},{"from":100}]}}`
+	if got != expected {
+		t.Errorf("expected\n%s\n,got:\n%s", expected, got)
+	}
+}
+
+func TestRangeAggregationWithPointers(t *testing.T) {
+	fifty := 50
+	hundred := 100
+	agg := NewRangeAggregation().Field("price")
+	agg = agg.AddRange(nil, &fifty)
+	agg = agg.AddRange(fifty, &hundred)
+	agg = agg.AddRange(hundred, nil)
 	src, err := agg.Source()
 	if err != nil {
 		t.Fatal(err)

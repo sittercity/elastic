@@ -1,22 +1,22 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
 package elastic
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
 
-	"gopkg.in/olivere/elastic.v3/uritemplates"
+	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
 
 // IndicesGetMappingService retrieves the mapping definitions for an index or
 // index/type.
 //
-// See https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-get-mapping.html
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/indices-get-mapping.html
 // for details.
 type IndicesGetMappingService struct {
 	client            *Client
@@ -143,7 +143,7 @@ func (s *IndicesGetMappingService) Validate() error {
 
 // Do executes the operation. It returns mapping definitions for an index
 // or index/type.
-func (s *IndicesGetMappingService) Do() (map[string]interface{}, error) {
+func (s *IndicesGetMappingService) Do(ctx context.Context) (map[string]interface{}, error) {
 	// Check pre-conditions
 	if err := s.Validate(); err != nil {
 		return nil, err
@@ -156,14 +156,14 @@ func (s *IndicesGetMappingService) Do() (map[string]interface{}, error) {
 	}
 
 	// Get HTTP response
-	res, err := s.client.PerformRequest("GET", path, params, nil)
+	res, err := s.client.PerformRequest(ctx, "GET", path, params, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	// Return operation response
 	var ret map[string]interface{}
-	if err := json.Unmarshal(res.Body, &ret); err != nil {
+	if err := s.client.decoder.Decode(res.Body, &ret); err != nil {
 		return nil, err
 	}
 	return ret, nil

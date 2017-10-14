@@ -1,4 +1,4 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
@@ -14,6 +14,28 @@ func TestGeoDistanceAggregation(t *testing.T) {
 	agg = agg.AddRange(nil, 100)
 	agg = agg.AddRange(100, 300)
 	agg = agg.AddRange(300, nil)
+	src, err := agg.Source()
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(src)
+	if err != nil {
+		t.Fatalf("marshaling to JSON failed: %v", err)
+	}
+	got := string(data)
+	expected := `{"geo_distance":{"field":"location","origin":"52.3760, 4.894","ranges":[{"to":100},{"from":100,"to":300},{"from":300}]}}`
+	if got != expected {
+		t.Errorf("expected\n%s\n,got:\n%s", expected, got)
+	}
+}
+
+func TestGeoDistanceAggregationWithPointers(t *testing.T) {
+	hundred := 100
+	threeHundred := 300
+	agg := NewGeoDistanceAggregation().Field("location").Point("52.3760, 4.894")
+	agg = agg.AddRange(nil, &hundred)
+	agg = agg.AddRange(hundred, &threeHundred)
+	agg = agg.AddRange(threeHundred, nil)
 	src, err := agg.Source()
 	if err != nil {
 		t.Fatal(err)

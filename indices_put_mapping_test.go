@@ -1,10 +1,13 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
 package elastic
 
-import "testing"
+import (
+	"context"
+	"testing"
+)
 
 func TestPutMappingURL(t *testing.T) {
 	client := setupTestClientAndCreateIndex(t)
@@ -48,14 +51,14 @@ func TestMappingLifecycle(t *testing.T) {
 	mapping := `{
 		"tweetdoc":{
 			"properties":{
-				"message":{
-					"type":"string"
+				"field":{
+					"type":"keyword"
 				}
 			}
 		}
 	}`
 
-	putresp, err := client.PutMapping().Index(testIndexName2).Type("tweetdoc").BodyString(mapping).Do()
+	putresp, err := client.PutMapping().Index(testIndexName2).Type("tweetdoc").BodyString(mapping).Do(context.TODO())
 	if err != nil {
 		t.Fatalf("expected put mapping to succeed; got: %v", err)
 	}
@@ -66,7 +69,7 @@ func TestMappingLifecycle(t *testing.T) {
 		t.Fatalf("expected put mapping ack; got: %v", putresp.Acknowledged)
 	}
 
-	getresp, err := client.GetMapping().Index(testIndexName2).Type("tweetdoc").Do()
+	getresp, err := client.GetMapping().Index(testIndexName2).Type("tweetdoc").Do(context.TODO())
 	if err != nil {
 		t.Fatalf("expected get mapping to succeed; got: %v", err)
 	}

@@ -1,10 +1,11 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
 package elastic
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -12,7 +13,6 @@ import (
 )
 
 // MultiSearch executes one or more searches in one roundtrip.
-// See http://www.elasticsearch.org/guide/reference/api/multi-search/
 type MultiSearchService struct {
 	client     *Client
 	requests   []*SearchRequest
@@ -46,7 +46,7 @@ func (s *MultiSearchService) Pretty(pretty bool) *MultiSearchService {
 	return s
 }
 
-func (s *MultiSearchService) Do() (*MultiSearchResult, error) {
+func (s *MultiSearchService) Do(ctx context.Context) (*MultiSearchResult, error) {
 	// Build url
 	path := "/_msearch"
 
@@ -57,7 +57,7 @@ func (s *MultiSearchService) Do() (*MultiSearchResult, error) {
 	}
 
 	// Set body
-	lines := make([]string, 0)
+	var lines []string
 	for _, sr := range s.requests {
 		// Set default indices if not specified in the request
 		if !sr.HasIndices() && len(s.indices) > 0 {
@@ -78,14 +78,14 @@ func (s *MultiSearchService) Do() (*MultiSearchResult, error) {
 	body := strings.Join(lines, "\n") + "\n" // Don't forget trailing \n
 
 	// Get response
-	res, err := s.client.PerformRequest("GET", path, params, body)
+	res, err := s.client.PerformRequest(ctx, "GET", path, params, body)
 	if err != nil {
 		return nil, err
 	}
 
 	// Return result
 	ret := new(MultiSearchResult)
-	if err := json.Unmarshal(res.Body, ret); err != nil {
+	if err := s.client.decoder.Decode(res.Body, ret); err != nil {
 		return nil, err
 	}
 	return ret, nil

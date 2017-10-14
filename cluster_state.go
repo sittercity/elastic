@@ -1,21 +1,21 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
 package elastic
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
 
-	"gopkg.in/olivere/elastic.v3/uritemplates"
+	"gopkg.in/olivere/elastic.v5/uritemplates"
 )
 
 // ClusterStateService allows to get a comprehensive state information of the whole cluster.
 //
-// See https://www.elastic.co/guide/en/elasticsearch/reference/current/cluster-state.html
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/cluster-state.html
 // for details.
 type ClusterStateService struct {
 	client            *Client
@@ -152,7 +152,7 @@ func (s *ClusterStateService) Validate() error {
 }
 
 // Do executes the operation.
-func (s *ClusterStateService) Do() (*ClusterStateResponse, error) {
+func (s *ClusterStateService) Do(ctx context.Context) (*ClusterStateResponse, error) {
 	// Check pre-conditions
 	if err := s.Validate(); err != nil {
 		return nil, err
@@ -165,14 +165,14 @@ func (s *ClusterStateService) Do() (*ClusterStateResponse, error) {
 	}
 
 	// Get HTTP response
-	res, err := s.client.PerformRequest("GET", path, params, nil)
+	res, err := s.client.PerformRequest(ctx, "GET", path, params, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	// Return operation response
 	ret := new(ClusterStateResponse)
-	if err := json.Unmarshal(res.Body, ret); err != nil {
+	if err := s.client.decoder.Decode(res.Body, ret); err != nil {
 		return nil, err
 	}
 	return ret, nil
@@ -259,7 +259,7 @@ type shardRouting struct {
 	RelocatingNode string          `json:"relocating_node"`
 	Shard          int             `json:"shard"`
 	Index          string          `json:"index"`
-	Version        int64           `json:"state"`
+	Version        int64           `json:"version"`
 	RestoreSource  *RestoreSource  `json:"restore_source"`
 	AllocationId   *allocationId   `json:"allocation_id"`
 	UnassignedInfo *unassignedInfo `json:"unassigned_info"`

@@ -1,4 +1,4 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
@@ -6,6 +6,7 @@ package elastic
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"sync/atomic"
 	"testing"
@@ -36,14 +37,14 @@ func TestDecoder(t *testing.T) {
 		Type("tweet").
 		Id("1").
 		BodyJson(&tweet).
-		Do()
+		Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if indexResult == nil {
 		t.Errorf("expected result to be != nil; got: %v", indexResult)
 	}
-	if dec.N <= 0 {
+	if dec.N == 0 {
 		t.Errorf("expected at least 1 call of decoder; got: %d", dec.N)
 	}
 }

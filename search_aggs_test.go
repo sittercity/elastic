@@ -5,6 +5,7 @@
 package elastic
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -12,7 +13,7 @@ import (
 )
 
 func TestAggs(t *testing.T) {
-	//client := setupTestClientAndCreateIndex(t, SetTraceLog(log.New(os.Stdout, "", log.LstdFlags)))
+	// client := setupTestClientAndCreateIndex(t, SetTraceLog(log.New(os.Stdout, "", log.LstdFlags)))
 	client := setupTestClientAndCreateIndex(t)
 
 	esversion, err := client.ElasticsearchVersion(DefaultURL)
@@ -47,22 +48,22 @@ func TestAggs(t *testing.T) {
 	}
 
 	// Add all documents
-	_, err = client.Index().Index(testIndexName).Type("tweet").Id("1").BodyJson(&tweet1).Do()
+	_, err = client.Index().Index(testIndexName).Type("tweet").Id("1").BodyJson(&tweet1).Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = client.Index().Index(testIndexName).Type("tweet").Id("2").BodyJson(&tweet2).Do()
+	_, err = client.Index().Index(testIndexName).Type("tweet").Id("2").BodyJson(&tweet2).Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = client.Index().Index(testIndexName).Type("tweet").Id("3").BodyJson(&tweet3).Do()
+	_, err = client.Index().Index(testIndexName).Type("tweet").Id("3").BodyJson(&tweet3).Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = client.Flush().Index(testIndexName).Do()
+	_, err = client.Flush().Index(testIndexName).Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +87,7 @@ func TestAggs(t *testing.T) {
 	percentileRanksRetweetsAgg := NewPercentileRanksAggregation().Field("retweets").Values(25, 50, 75)
 	cardinalityAgg := NewCardinalityAggregation().Field("user")
 	significantTermsAgg := NewSignificantTermsAggregation().Field("message")
-	samplerAgg := NewSamplerAggregation().Field("user").SubAggregation("tagged_with", NewTermsAggregation().Field("tags"))
+	samplerAgg := NewSamplerAggregation().SubAggregation("tagged_with", NewTermsAggregation().Field("tags"))
 	retweetsRangeAgg := NewRangeAggregation().Field("retweets").Lt(10).Between(10, 100).Gt(100)
 	retweetsKeyedRangeAgg := NewRangeAggregation().Field("retweets").Keyed(true).Lt(10).Between(10, 100).Gt(100)
 	dateRangeAgg := NewDateRangeAggregation().Field("created").Lt("2012-01-01").Between("2012-01-01", "2013-01-01").Gt("2013-01-01")
@@ -134,8 +135,15 @@ func TestAggs(t *testing.T) {
 	builder = builder.Aggregation("viewport", geoBoundsAgg)
 	builder = builder.Aggregation("geohashed", geoHashAgg)
 	if esversion >= "1.4" {
-		countByUserAgg := NewFiltersAggregation().Filters(NewTermQuery("user", "olivere"), NewTermQuery("user", "sandrae"))
+		// Unnamed filters
+		countByUserAgg := NewFiltersAggregation().
+			Filters(NewTermQuery("user", "olivere"), NewTermQuery("user", "sandrae"))
 		builder = builder.Aggregation("countByUser", countByUserAgg)
+		// Named filters
+		countByUserAgg2 := NewFiltersAggregation().
+			FilterWithName("olivere", NewTermQuery("user", "olivere")).
+			FilterWithName("sandrae", NewTermQuery("user", "sandrae"))
+		builder = builder.Aggregation("countByUser2", countByUserAgg2)
 	}
 	if esversion >= "2.0" {
 		// AvgBucket
@@ -164,7 +172,7 @@ func TestAggs(t *testing.T) {
 		dateHisto = dateHisto.SubAggregation("movingAvg", NewMovAvgAggregation().BucketsPath("sumOfRetweets"))
 		builder = builder.Aggregation("movingAvgDateHisto", dateHisto)
 	}
-	searchResult, err := builder.Do()
+	searchResult, err := builder.Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -600,8 +608,8 @@ func TestAggs(t *testing.T) {
 	if samplerAggRes == nil {
 		t.Fatalf("expected != nil; got: nil")
 	}
-	if samplerAggRes.DocCount != 2 {
-		t.Errorf("expected %v; got: %v", 2, samplerAggRes.DocCount)
+	if samplerAggRes.DocCount != 3 {
+		t.Errorf("expected %v; got: %v", 3, samplerAggRes.DocCount)
 	}
 	sub, found := samplerAggRes.Aggregations["tagged_with"]
 	if !found {
@@ -762,7 +770,7 @@ func TestAggs(t *testing.T) {
 		t.Errorf("expected %d; got: %d", 1, histoRes.Buckets[1].DocCount)
 	}
 	if histoRes.Buckets[1].Key != 100.0 {
-		t.Errorf("expected %v; got: %v", 100.0, histoRes.Buckets[1].Key)
+		t.Errorf("expected %v; got: %+v", 100.0, histoRes.Buckets[1].Key)
 	}
 
 	// dateHisto
@@ -917,7 +925,7 @@ func TestAggs(t *testing.T) {
 	}
 
 	if esversion >= "1.4" {
-		// Filters agg "countByUser"
+		// Filters agg "countByUser" (unnamed)
 		countByUserAggRes, found := agg.Filters("countByUser")
 		if !found {
 			t.Errorf("expected %v; got: %v", true, found)
@@ -928,11 +936,49 @@ func TestAggs(t *testing.T) {
 		if len(countByUserAggRes.Buckets) != 2 {
 			t.Fatalf("expected %d; got: %d", 2, len(countByUserAggRes.Buckets))
 		}
+		if len(countByUserAggRes.NamedBuckets) != 0 {
+			t.Fatalf("expected %d; got: %d", 0, len(countByUserAggRes.NamedBuckets))
+		}
 		if countByUserAggRes.Buckets[0].DocCount != 2 {
 			t.Errorf("expected %d; got: %d", 2, countByUserAggRes.Buckets[0].DocCount)
 		}
 		if countByUserAggRes.Buckets[1].DocCount != 1 {
 			t.Errorf("expected %d; got: %d", 1, countByUserAggRes.Buckets[1].DocCount)
+		}
+
+		// Filters agg "countByUser2" (named)
+		countByUser2AggRes, found := agg.Filters("countByUser2")
+		if !found {
+			t.Errorf("expected %v; got: %v", true, found)
+		}
+		if countByUser2AggRes == nil {
+			t.Fatalf("expected != nil; got: nil")
+		}
+		if len(countByUser2AggRes.Buckets) != 0 {
+			t.Fatalf("expected %d; got: %d", 0, len(countByUser2AggRes.Buckets))
+		}
+		if len(countByUser2AggRes.NamedBuckets) != 2 {
+			t.Fatalf("expected %d; got: %d", 2, len(countByUser2AggRes.NamedBuckets))
+		}
+		b, found := countByUser2AggRes.NamedBuckets["olivere"]
+		if !found {
+			t.Fatalf("expected bucket %q; got: %v", "olivere", found)
+		}
+		if b == nil {
+			t.Fatalf("expected bucket %q; got: %v", "olivere", b)
+		}
+		if b.DocCount != 2 {
+			t.Errorf("expected %d; got: %d", 2, b.DocCount)
+		}
+		b, found = countByUser2AggRes.NamedBuckets["sandrae"]
+		if !found {
+			t.Fatalf("expected bucket %q; got: %v", "sandrae", found)
+		}
+		if b == nil {
+			t.Fatalf("expected bucket %q; got: %v", "sandrae", b)
+		}
+		if b.DocCount != 1 {
+			t.Errorf("expected %d; got: %d", 1, b.DocCount)
 		}
 	}
 }
@@ -954,11 +1000,11 @@ func TestAggsMarshal(t *testing.T) {
 	}
 
 	// Add all documents
-	_, err := client.Index().Index(testIndexName).Type("tweet").Id("1").BodyJson(&tweet1).Do()
+	_, err := client.Index().Index(testIndexName).Type("tweet").Id("1").BodyJson(&tweet1).Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = client.Flush().Index(testIndexName).Do()
+	_, err = client.Flush().Index(testIndexName).Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -970,7 +1016,7 @@ func TestAggsMarshal(t *testing.T) {
 	// Run query
 	builder := client.Search().Index(testIndexName).Query(all)
 	builder = builder.Aggregation("dhagg", dhagg)
-	searchResult, err := builder.Do()
+	searchResult, err := builder.Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1282,6 +1328,105 @@ func TestAggsMetricsExtendedStats(t *testing.T) {
 	}
 	if *agg.StdDeviation != float64(14.774302013969987) {
 		t.Fatalf("expected aggregation StdDeviation = %v; got: %v", float64(14.774302013969987), *agg.StdDeviation)
+	}
+}
+
+func TestAggsMatrixStats(t *testing.T) {
+	s := `{
+	"matrixstats": {
+		"fields": [{
+			"name": "income",
+			"count": 50,
+			"mean": 51985.1,
+			"variance": 7.383377037755103E7,
+			"skewness": 0.5595114003506483,
+			"kurtosis": 2.5692365287787124,
+			"covariance": {
+				"income": 7.383377037755103E7,
+				"poverty": -21093.65836734694
+			},
+			"correlation": {
+				"income": 1.0,
+				"poverty": -0.8352655256272504
+			}
+		}, {
+			"name": "poverty",
+			"count": 51,
+			"mean": 12.732000000000001,
+			"variance": 8.637730612244896,
+			"skewness": 0.4516049811903419,
+			"kurtosis": 2.8615929677997767,
+			"covariance": {
+				"income": -21093.65836734694,
+				"poverty": 8.637730612244896
+			},
+			"correlation": {
+				"income": -0.8352655256272504,
+				"poverty": 1.0
+			}
+		}]
+	}
+}`
+
+	aggs := new(Aggregations)
+	err := json.Unmarshal([]byte(s), &aggs)
+	if err != nil {
+		t.Fatalf("expected no error decoding; got: %v", err)
+	}
+
+	agg, found := aggs.MatrixStats("matrixstats")
+	if !found {
+		t.Fatalf("expected aggregation to be found; got: %v", found)
+	}
+	if agg == nil {
+		t.Fatalf("expected aggregation != nil; got: %v", agg)
+	}
+	if want, got := 2, len(agg.Fields); want != got {
+		t.Fatalf("expected aggregaton len(Fields) = %v; got: %v", want, got)
+	}
+	field := agg.Fields[0]
+	if want, got := "income", field.Name; want != got {
+		t.Fatalf("expected aggregation field name == %q; got: %q", want, got)
+	}
+	if want, got := int64(50), field.Count; want != got {
+		t.Fatalf("expected aggregation field count == %v; got: %v", want, got)
+	}
+	if want, got := 51985.1, field.Mean; want != got {
+		t.Fatalf("expected aggregation field mean == %v; got: %v", want, got)
+	}
+	if want, got := 7.383377037755103e7, field.Variance; want != got {
+		t.Fatalf("expected aggregation field variance == %v; got: %v", want, got)
+	}
+	if want, got := 0.5595114003506483, field.Skewness; want != got {
+		t.Fatalf("expected aggregation field skewness == %v; got: %v", want, got)
+	}
+	if want, got := 2.5692365287787124, field.Kurtosis; want != got {
+		t.Fatalf("expected aggregation field kurtosis == %v; got: %v", want, got)
+	}
+	if field.Covariance == nil {
+		t.Fatalf("expected aggregation field covariance != nil; got: %v", nil)
+	}
+	if want, got := 7.383377037755103e7, field.Covariance["income"]; want != got {
+		t.Fatalf("expected aggregation field covariance == %v; got: %v", want, got)
+	}
+	if want, got := -21093.65836734694, field.Covariance["poverty"]; want != got {
+		t.Fatalf("expected aggregation field covariance == %v; got: %v", want, got)
+	}
+	if field.Correlation == nil {
+		t.Fatalf("expected aggregation field correlation != nil; got: %v", nil)
+	}
+	if want, got := 1.0, field.Correlation["income"]; want != got {
+		t.Fatalf("expected aggregation field correlation == %v; got: %v", want, got)
+	}
+	if want, got := -0.8352655256272504, field.Correlation["poverty"]; want != got {
+		t.Fatalf("expected aggregation field correlation == %v; got: %v", want, got)
+	}
+	field = agg.Fields[1]
+	if want, got := "poverty", field.Name; want != got {
+		t.Fatalf("expected aggregation field name == %q; got: %q", want, got)
+	}
+	if want, got := int64(51), field.Count; want != got {
+		t.Fatalf("expected aggregation field count == %v; got: %v", want, got)
 	}
 }
 
@@ -2118,7 +2263,7 @@ func TestAggsBucketSampler(t *testing.T) {
 	}
 	sub, found := agg.Aggregations["keywords"]
 	if !found {
-		t.Fatal("expected sub aggregation %q", "keywords")
+		t.Fatalf("expected sub aggregation %q", "keywords")
 	}
 	if sub == nil {
 		t.Fatalf("expected sub aggregation %q; got: %v", "keywords", sub)
@@ -2919,6 +3064,87 @@ func TestAggsPipelineDerivative(t *testing.T) {
 	}
 	if *agg.Value != float64(315) {
 		t.Fatalf("expected aggregation value = %v; got: %v", float64(315), *agg.Value)
+	}
+}
+
+func TestAggsPipelinePercentilesBucket(t *testing.T) {
+	s := `{
+	"sales_percentiles": {
+	  "values": {
+        "25.0": 100,
+        "50.0": 200,
+        "75.0": 300
+      }
+    }
+}`
+	aggs := new(Aggregations)
+	err := json.Unmarshal([]byte(s), &aggs)
+	if err != nil {
+		t.Fatalf("expected no error decoding; got: %v", err)
+	}
+
+	agg, found := aggs.PercentilesBucket("sales_percentiles")
+	if !found {
+		t.Fatalf("expected aggregation to be found; got: %v", found)
+	}
+	if agg == nil {
+		t.Fatalf("expected aggregation != nil; got: %v", agg)
+	}
+	if len(agg.Values) != 3 {
+		t.Fatalf("expected aggregation map with three entries; got: %v", agg.Values)
+	}
+}
+
+func TestAggsPipelineStatsBucket(t *testing.T) {
+	s := `{
+	"stats_monthly_sales": {
+	 "count": 3,
+	 "min": 60.0,
+	 "max": 550.0,
+	 "avg": 328.3333333333333,
+	 "sum": 985.0
+  }
+}`
+
+	aggs := new(Aggregations)
+	err := json.Unmarshal([]byte(s), &aggs)
+	if err != nil {
+		t.Fatalf("expected no error decoding; got: %v", err)
+	}
+
+	agg, found := aggs.StatsBucket("stats_monthly_sales")
+	if !found {
+		t.Fatalf("expected aggregation to be found; got: %v", found)
+	}
+	if agg == nil {
+		t.Fatalf("expected aggregation != nil; got: %v", agg)
+	}
+	if agg.Count != 3 {
+		t.Fatalf("expected aggregation count = %v; got: %v", 3, agg.Count)
+	}
+	if agg.Min == nil {
+		t.Fatalf("expected aggregation min != nil; got: %v", agg.Min)
+	}
+	if *agg.Min != float64(60.0) {
+		t.Fatalf("expected aggregation min = %v; got: %v", float64(60.0), *agg.Min)
+	}
+	if agg.Max == nil {
+		t.Fatalf("expected aggregation max != nil; got: %v", agg.Max)
+	}
+	if *agg.Max != float64(550.0) {
+		t.Fatalf("expected aggregation max = %v; got: %v", float64(550.0), *agg.Max)
+	}
+	if agg.Avg == nil {
+		t.Fatalf("expected aggregation avg != nil; got: %v", agg.Avg)
+	}
+	if *agg.Avg != float64(328.3333333333333) {
+		t.Fatalf("expected aggregation average = %v; got: %v", float64(328.3333333333333), *agg.Avg)
+	}
+	if agg.Sum == nil {
+		t.Fatalf("expected aggregation sum != nil; got: %v", agg.Sum)
+	}
+	if *agg.Sum != float64(985.0) {
+		t.Fatalf("expected aggregation sum = %v; got: %v", float64(985.0), *agg.Sum)
 	}
 }
 

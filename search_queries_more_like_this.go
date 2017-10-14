@@ -1,4 +1,4 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
@@ -13,7 +13,7 @@ import "errors"
 // how the terms should be selected and how the query is formed.
 //
 // For more details, see
-// https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-mlt-query.html
+// https://www.elastic.co/guide/en/elasticsearch/reference/5.2/query-dsl-mlt-query.html
 type MoreLikeThisQuery struct {
 	fields                 []string
 	docs                   []*MoreLikeThisQueryItem
@@ -208,13 +208,13 @@ func (q *MoreLikeThisQuery) Source() (interface{}, error) {
 	source := make(map[string]interface{})
 
 	params := make(map[string]interface{})
-	source["mlt"] = params
+	source["more_like_this"] = params
 
 	if len(q.fields) > 0 {
 		params["fields"] = q.fields
 	}
 
-	likes := make([]interface{}, 0)
+	var likes []interface{}
 	for _, doc := range q.docs {
 		src, err := doc.Source()
 		if err != nil {
@@ -225,7 +225,7 @@ func (q *MoreLikeThisQuery) Source() (interface{}, error) {
 	params["like"] = likes
 
 	if len(q.unlikeDocs) > 0 {
-		dontLikes := make([]interface{}, 0)
+		var dontLikes []interface{}
 		for _, doc := range q.unlikeDocs {
 			src, err := doc.Source()
 			if err != nil {

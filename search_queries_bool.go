@@ -1,4 +1,4 @@
-// Copyright 2012-2015 Oliver Eilhard. All rights reserved.
+// Copyright 2012-present Oliver Eilhard. All rights reserved.
 // Use of this source code is governed by a MIT-license.
 // See http://olivere.mit-license.org/license.txt for details.
 
@@ -9,7 +9,7 @@ import "fmt"
 // A bool query matches documents matching boolean
 // combinations of other queries.
 // For more details, see:
-// http://www.elasticsearch.org/guide/reference/query-dsl/bool-query.html
+// https://www.elastic.co/guide/en/elasticsearch/reference/5.2/query-dsl-bool-query.html
 type BoolQuery struct {
 	Query
 	mustClauses        []Query
@@ -124,7 +124,7 @@ func (q *BoolQuery) Source() (interface{}, error) {
 		}
 		boolClause["must"] = src
 	} else if len(q.mustClauses) > 1 {
-		clauses := make([]interface{}, 0)
+		var clauses []interface{}
 		for _, subQuery := range q.mustClauses {
 			src, err := subQuery.Source()
 			if err != nil {
@@ -143,7 +143,7 @@ func (q *BoolQuery) Source() (interface{}, error) {
 		}
 		boolClause["must_not"] = src
 	} else if len(q.mustNotClauses) > 1 {
-		clauses := make([]interface{}, 0)
+		var clauses []interface{}
 		for _, subQuery := range q.mustNotClauses {
 			src, err := subQuery.Source()
 			if err != nil {
@@ -162,7 +162,7 @@ func (q *BoolQuery) Source() (interface{}, error) {
 		}
 		boolClause["filter"] = src
 	} else if len(q.filterClauses) > 1 {
-		clauses := make([]interface{}, 0)
+		var clauses []interface{}
 		for _, subQuery := range q.filterClauses {
 			src, err := subQuery.Source()
 			if err != nil {
@@ -181,7 +181,7 @@ func (q *BoolQuery) Source() (interface{}, error) {
 		}
 		boolClause["should"] = src
 	} else if len(q.shouldClauses) > 1 {
-		clauses := make([]interface{}, 0)
+		var clauses []interface{}
 		for _, subQuery := range q.shouldClauses {
 			src, err := subQuery.Source()
 			if err != nil {
